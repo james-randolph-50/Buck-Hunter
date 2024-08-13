@@ -10,7 +10,7 @@ import { OrbitControls, Text } from '@react-three/drei';
 
 const App = () => {
   return (
-    <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
+    <Canvas shadows camera={{ position: [0, 7, 30], fov: 75 }}>
       <Suspense>
       <Text position={[5, 7, -10]} color="black" >
         Click the stag to shoot it.
@@ -29,7 +29,7 @@ const App = () => {
         shadow-camera-bottom={-10}
       />
       <Physics>
-        <Stag />
+        <Stag scale={10} position={[1,2,0]} />
         <Tree scale={1} xPos={5} zPos={-10} />
         <Tree scale={1.5} xPos={8} zPos={8} />
         <Tree scale={2} xPos={-5} zPos={4} />

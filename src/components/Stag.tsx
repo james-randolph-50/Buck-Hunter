@@ -1,61 +1,96 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { useGLTF } from '@react-three/drei';
-import { RigidBody } from '@react-three/rapier';
-import { AnimationMixer, LoopOnce } from 'three';
+import React, { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useGLTF, useAnimations } from '@react-three/drei';
+import * as THREE from 'three';
 
-const Stag: React.FC = () => {
-  const stagRef = useRef<any>(null);
-  const { scene, animations } = useGLTF('./Stag.glb');
+type StagProps = {
+  position: [number, number, number];
+  scale: number
+};
+
+
+const Stag: React.FC<StagProps> = ({ position }) => {
+  const group = useRef<THREE.Group>(null);
+  const { nodes, animations } = useGLTF('/Stag.glb');
+  const { actions } = useAnimations(animations, group);
+
   
-  const mixerRef = useRef<AnimationMixer | null>(null);
-  const deathAnimationRef = useRef<any>(null);
-  const idleAnimationRef = useRef<any>(null);
 
-  // State to track if the death animation has been played
-  const [hasPlayedDeathAnimation, setHasPlayedDeathAnimation] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [direction, setDirection] = useState(new THREE.Vector3(1, 0, 0)); // Direction of movement
+
+  // Define animations using the new variables
+  const idleAnimation = animations.find(anim => anim.name === 'Idle');
+  const feedAnimation = animations.find(anim => anim.name === 'Eating');
+  const runAnimation = animations.find(anim => anim.name === 'Gallop');
+  const deathAnimation = animations.find(anim => anim.name === 'Death');
 
   useEffect(() => {
-    if (scene && animations.length) {
-      mixerRef.current = new AnimationMixer(scene);
+    const idleAction = idleAnimation ? actions[idleAnimation.name] : null;
+    const feedAction = feedAnimation ? actions[feedAnimation.name] : null;
+    const randomAction = Math.random() < 0.5 ? idleAction : feedAction;
 
-      const idleAnimation = animations.find(anim => anim.name === 'Idle');
-      const runAnimation = animations.find(anim => anim.name === 'Gallop');
-      const deathAnimation = animations.find(anim => anim.name === 'Death');
+    randomAction?.reset().fadeIn(0.5).play();
 
-      if (idleAnimation) {
-        idleAnimationRef.current = mixerRef.current.clipAction(idleAnimation);
-        idleAnimationRef.current.play();
+    // Randomly toggle between Idle and Feed until a click occurs
+    const toggleInterval = setInterval(() => {
+      if (!isClicked && !isMoving) {
+        randomAction?.fadeOut(0.5);
+        const newAction = randomAction === idleAction ? feedAction : idleAction;
+        newAction?.reset().fadeIn(0.5).play();
       }
-      if (deathAnimation) {
-        deathAnimationRef.current = mixerRef.current.clipAction(deathAnimation);
-        // Set the death animation to play only once
-        deathAnimationRef.current.setLoop(LoopOnce, 1);
-        // Pause the animation at the end
-        deathAnimationRef.current.clampWhenFinished = true;
-      }
-    }
-  }, [scene, animations]);
+    }, 3000);
 
-  useFrame((state, delta) => {
-    if (mixerRef.current) mixerRef.current.update(delta);
-  });
+    return () => clearInterval(toggleInterval);
+  }, [actions, idleAnimation, feedAnimation, isClicked, isMoving]);
 
-  const death = () => {
-    if (deathAnimationRef.current && !hasPlayedDeathAnimation) {
-      if (idleAnimationRef.current) {
-        idleAnimationRef.current.stop(); // Stop the Idle animation
-      }
-      deathAnimationRef.current.reset().play();
-      setHasPlayedDeathAnimation(true);
+  const handleClick = () => {
+    setIsClicked(true);
+    setIsMoving(false);
+
+    // Play the death animation once and stop looping
+    if (deathAnimation) {
+      const deathAction = actions[deathAnimation.name];
+      deathAction?.reset().setLoop(THREE.LoopOnce, 1).play();
+      deathAction.clampWhenFinished = true;
     }
   };
 
+  useEffect(() => {
+    if (isMoving && !isClicked && runAnimation) {
+      const gallopAction = actions[runAnimation.name];
+      gallopAction?.reset().fadeIn(0.5).play();
+    }
+  }, [isMoving, isClicked, actions, runAnimation]);
+
+  useFrame((state, delta) => {
+    if (isMoving && group.current && !isClicked) {
+      group.current.position.addScaledVector(direction, delta * 2); // Move the stag across the screen
+      if (group.current.position.x > 10) {
+        setDirection(new THREE.Vector3(-1, 0, 0)); // Change direction
+      } else if (group.current.position.x < -10) {
+        setDirection(new THREE.Vector3(1, 0, 0)); // Change direction
+      }
+    }
+  });
+
+  const startMovement = () => {
+    setIsMoving(true);
+  };
+
   return (
-    <RigidBody type="fixed" ref={stagRef} scale={0.5} position={[0, 0.5, 0]}>
-      <primitive onClick={death} object={scene} />
-    </RigidBody>
+    <group
+      ref={group}
+      position={position}
+      onClick={handleClick}
+      onPointerDown={startMovement}
+    >
+      {nodes['stag'] && <primitive object={nodes['stag']} />}
+    </group>
   );
 };
+
+useGLTF.preload('Stag.glb');
 
 export default Stag;
