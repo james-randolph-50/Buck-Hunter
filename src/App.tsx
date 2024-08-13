@@ -16,6 +16,7 @@ const App = () => {
         Click the stag to shoot it.
       </Text>
       <ambientLight intensity={0.5} />
+
       <directionalLight
         position={[5, 5, 5]}
         intensity={1}
@@ -29,7 +30,7 @@ const App = () => {
         shadow-camera-bottom={-10}
       />
       <Physics>
-        <Stag scale={10} position={[1,2,0]} />
+        <Stag scale={.8} xPos={4} zPos={-7} />
         <Tree scale={1} xPos={5} zPos={-10} />
         <Tree scale={1.5} xPos={8} zPos={8} />
         <Tree scale={2} xPos={-5} zPos={4} />

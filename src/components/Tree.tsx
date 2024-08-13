@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useGLTF, useLoader } from '@react-three/drei';
 import { RigidBody } from '@react-three/rapier';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
